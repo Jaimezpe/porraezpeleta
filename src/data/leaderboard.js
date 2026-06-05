@@ -1,11 +1,3 @@
-const SAMPLE_PLAYERS = [
-  { position: 1, name: 'Aita', points: 128, hits: 34 },
-  { position: 2, name: 'Ama', points: 121, hits: 32 },
-  { position: 3, name: 'Jaime', points: 117, hits: 31 },
-  { position: 4, name: 'Iker', points: 109, hits: 29 },
-  { position: 5, name: 'Nora', points: 104, hits: 27 },
-]
-
 const FIELD_ALIASES = {
   position: ['puesto', 'posicion', 'position', 'pos', 'rank', 'clasificacion'],
   name: ['nombre', 'participante', 'jugador', 'equipo', 'familia', 'name'],
@@ -14,7 +6,7 @@ const FIELD_ALIASES = {
 }
 
 export async function getLeaderboardData() {
-  const source = (import.meta.env.VITE_DATA_SOURCE || 'mock').toLowerCase()
+  const source = (import.meta.env.VITE_DATA_SOURCE || 'csv').toLowerCase()
 
   try {
     if (source === 'excel' || source === 'csv') {
@@ -49,16 +41,12 @@ export async function getLeaderboardData() {
       }
     }
 
-    return {
-      players: SAMPLE_PLAYERS,
-      sourceLabel: 'Datos de ejemplo',
-      updatedAt: new Date(),
-    }
+    throw new Error(`Fuente de datos no soportada: ${source}`)
   } catch (error) {
     return {
-      players: SAMPLE_PLAYERS,
-      sourceLabel: 'Datos de ejemplo',
-      updatedAt: new Date(),
+      players: [],
+      sourceLabel: 'Sin conectar',
+      updatedAt: null,
       error: error instanceof Error ? error.message : 'No se pudieron cargar los datos',
     }
   }

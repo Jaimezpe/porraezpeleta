@@ -36,7 +36,12 @@ function App() {
   }, [])
 
   const leader = leaderboard.players[0]
+  const hasPlayers = leaderboard.players.length > 0
   const updatedText = useMemo(() => {
+    if (leaderboard.error) {
+      return 'Pendiente de datos'
+    }
+
     if (!leaderboard.updatedAt) {
       return 'Actualizando datos'
     }
@@ -64,7 +69,7 @@ function App() {
         <div className="leader-summary" aria-live="polite">
           <span>Lider</span>
           <strong>{leader?.name || 'Pendiente'}</strong>
-          <small>{leader ? `${leader.points} puntos` : 'cargando'}</small>
+          <small>{leader ? `${leader.points} puntos` : 'sin datos'}</small>
         </div>
       </section>
 
@@ -78,26 +83,33 @@ function App() {
         </header>
 
         <ol className="ranking-list" aria-busy={leaderboard.status === 'loading'}>
-          {leaderboard.players.map((player) => (
-            <li className="ranking-row" key={`${player.position}-${player.name}`}>
-              <span className="rank-number">{String(player.position).padStart(2, '0')}</span>
+          {hasPlayers ? (
+            leaderboard.players.map((player) => (
+              <li className="ranking-row" key={`${player.position}-${player.name}`}>
+                <span className="rank-number">{String(player.position).padStart(2, '0')}</span>
 
-              <div className="player-block">
-                <strong>{player.name}</strong>
-                {typeof player.hits === 'number' && <span>{player.hits} aciertos</span>}
-              </div>
+                <div className="player-block">
+                  <strong>{player.name}</strong>
+                  {typeof player.hits === 'number' && <span>{player.hits} aciertos</span>}
+                </div>
 
-              <div className="score-block">
-                <strong>{player.points}</strong>
-                <span>puntos</span>
-              </div>
+                <div className="score-block">
+                  <strong>{player.points}</strong>
+                  <span>puntos</span>
+                </div>
+              </li>
+            ))
+          ) : (
+            <li className="empty-state">
+              <strong>Sin resultados todavia</strong>
+              <span>La clasificacion aparecera cuando conectes la hoja real.</span>
             </li>
-          ))}
+          )}
         </ol>
 
         <footer className="ranking-footer">
           <span>{updatedText}</span>
-          {leaderboard.error && <span>Usando muestra local</span>}
+          {leaderboard.error && <span>Fuente pendiente</span>}
         </footer>
       </section>
     </main>

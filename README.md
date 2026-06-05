@@ -9,15 +9,18 @@ npm install
 npm run dev
 ```
 
-## Datos
+## Datos reales
 
-Por defecto usa datos de ejemplo. Para cambiar la fuente, crea `.env.local` copiando `.env.example`.
+La web no trae datos de ejemplo. Si no hay fuente conectada, muestra un estado pendiente.
+
+Para cambiar la fuente, crea `.env.local` copiando `.env.example`.
 
 ### Excel
 
-1. En Excel, exporta o guarda la hoja como CSV.
-2. Coloca el archivo en `public/porra.csv`.
-3. Usa:
+1. Abre el Excel y entra en la hoja concreta donde salen los resultados.
+2. Exporta o guarda esa hoja como CSV.
+3. Coloca el archivo en `public/porra.csv`.
+4. Usa:
 
 ```bash
 VITE_DATA_SOURCE=excel
@@ -25,6 +28,8 @@ VITE_EXCEL_CSV_PATH=/porra.csv
 ```
 
 Tambien puedes usar `VITE_DATA_SOURCE=csv`.
+
+Si tu Excel tiene varias hojas, no pasa nada: exporta solo la hoja de resultados. Cuando tengas el archivo final, pasamelo y ajusto el lector a los nombres reales de la hoja y columnas.
 
 No he incluido lectura directa de `.xlsx` en el navegador porque el parser habitual para Vite trae vulnerabilidades altas sin fix disponible. La ruta CSV deja la integracion preparada sin meter ese riesgo en la web.
 
@@ -39,6 +44,8 @@ VITE_GOOGLE_SHEET_ID=
 VITE_GOOGLE_SHEET_GID=0
 ```
 
+En Google Sheets, cada pestana tiene un `gid` distinto. Para varias hojas, usa el `gid` de la pestana donde este la clasificacion.
+
 ### Google Sheets API
 
 Para una hoja accesible con API key:
@@ -47,7 +54,7 @@ Para una hoja accesible con API key:
 VITE_DATA_SOURCE=google_sheets_api
 VITE_GOOGLE_SHEETS_API_KEY=tu_api_key
 VITE_GOOGLE_SHEET_ID=tu_sheet_id
-VITE_GOOGLE_SHEET_RANGE=Clasificacion!A:D
+VITE_GOOGLE_SHEET_RANGE=NombreDeLaHoja!A:D
 ```
 
 ## Columnas esperadas
