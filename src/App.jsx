@@ -102,7 +102,7 @@ function App() {
           ) : (
             <li className="empty-state">
               <strong>Sin resultados todavia</strong>
-              <span>La clasificacion aparecera cuando conectes la hoja real.</span>
+              <span>Cuando mi padre me pase el excel, lo activo.</span>
             </li>
           )}
         </ol>
