@@ -63,7 +63,6 @@ function App() {
         <p className="eyebrow">Clasificacion familiar</p>
         <h1 id="page-title">Porra Ezpeleta</h1>
         <p className="lead">
-          La foto rapida de los cinco primeros puestos, limpia y lista para conectar con Excel o Google Sheets.
         </p>
 
         <div className="leader-summary" aria-live="polite">
