@@ -156,7 +156,7 @@ function normalizeRows(rows) {
     return b.points - a.points
   })
 
-  return sorted.slice(0, 5).map((player, index) => ({
+  return sorted.map((player, index) => ({
     position: player.rawPosition || index + 1,
     name: player.name,
     points: player.points,
