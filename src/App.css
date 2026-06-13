@@ -202,8 +202,12 @@ body {
 
 
 .ranking-row {
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 14px 16px;
   min-height: 74px;
   flex-shrink: 0;
+  align-items: center;
 }
 
 .ranking-row:first-child {
@@ -383,7 +387,11 @@ body {
   }
 
   .ranking-row {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 10px;
     min-height: 54px;
+    align-items: center;
   }
 
   .rank-number {
