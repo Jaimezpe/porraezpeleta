@@ -1,117 +1,182 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getLeaderboardData } from './data/leaderboard'
+import { useCallback, useEffect, useState } from 'react'
+import { AdminDashboard } from './components/AdminDashboard'
+import { Landing } from './components/Landing'
+import { LoginModal } from './components/LoginModal'
+import { MaintenanceGate } from './components/MaintenanceGate'
+import { PredictionView } from './components/PredictionView'
+import { UserDashboard } from './components/UserDashboard'
+import { LoadingScreen, Modal } from './components/UI'
+import {
+  EMPTY_SNAPSHOT,
+  checkMaintenanceAccess,
+  getCurrentSession,
+  loadAuthenticatedSnapshot,
+  loadPublicSnapshot,
+  onAuthChange,
+  requestLoginCode,
+  savePrediction,
+  signOut,
+  unlockMaintenanceAccess,
+  verifyLoginCode,
+} from './lib/repository'
 import './App.css'
 
-const initialState = {
-  status: 'loading',
-  players: [],
-  sourceLabel: 'Cargando',
-  updatedAt: null,
-  error: '',
-}
-
 function App() {
-  const [leaderboard, setLeaderboard] = useState(initialState)
+  const [snapshot, setSnapshot] = useState(null)
+  const [session, setSession] = useState(null)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [publicParticipantId, setPublicParticipantId] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [maintenance, setMaintenance] = useState({
+    checking: true,
+    busy: false,
+    unlocked: false,
+    error: '',
+    retry: false,
+  })
 
-  useEffect(() => {
-    let active = true
-
-    getLeaderboardData().then((data) => {
-      if (!active) {
-        return
-      }
-
-      setLeaderboard({
-        status: 'ready',
-        players: data.players,
-        sourceLabel: data.sourceLabel,
-        updatedAt: data.updatedAt,
-        error: data.error || '',
-      })
-    })
-
-    return () => {
-      active = false
+  const refresh = useCallback(async (activeSession = null) => {
+    setLoadError('')
+    try {
+      const next = activeSession?.user?.id
+        ? await loadAuthenticatedSnapshot(activeSession.user.id)
+        : await loadPublicSnapshot()
+      setSnapshot(next)
+      return next
+    } catch (error) {
+      setLoadError('No se pudo conectar con Supabase. Revisa la configuracion del proyecto.')
+      setSnapshot((current) => current || { ...EMPTY_SNAPSHOT, configured: false })
+      return null
     }
   }, [])
 
-  const leader = leaderboard.players[0]
-  const hasPlayers = leaderboard.players.length > 0
-  const updatedText = useMemo(() => {
-    if (leaderboard.error) {
-      return 'Pendiente de datos'
+  const checkAccess = useCallback(async () => {
+    setMaintenance((current) => ({ ...current, checking: true, busy: true, error: '', retry: false }))
+    try {
+      const access = await checkMaintenanceAccess()
+      setMaintenance({ checking: false, busy: false, unlocked: access.unlocked, error: '', retry: false })
+    } catch (error) {
+      setMaintenance({
+        checking: false,
+        busy: false,
+        unlocked: false,
+        error: error.message || 'No se pudo comprobar el acceso',
+        retry: true,
+      })
     }
+  }, [])
 
-    if (!leaderboard.updatedAt) {
-      return 'Actualizando datos'
+  useEffect(() => {
+    checkAccess()
+  }, [checkAccess])
+
+  useEffect(() => {
+    if (maintenance.checking || !maintenance.unlocked) return undefined
+    let mounted = true
+    getCurrentSession().then((currentSession) => {
+      if (!mounted) return
+      setSession(currentSession)
+      refresh(currentSession)
+    })
+    const unsubscribe = onAuthChange((nextSession) => {
+      setSession(nextSession)
+      refresh(nextSession)
+    })
+    return () => {
+      mounted = false
+      unsubscribe()
     }
+  }, [maintenance.checking, maintenance.unlocked, refresh])
 
-    return new Intl.DateTimeFormat('es-ES', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(leaderboard.updatedAt)
-  }, [leaderboard.updatedAt])
+  async function handleMaintenanceUnlock(password) {
+    setMaintenance((current) => ({ ...current, busy: true, error: '', retry: false }))
+    try {
+      await unlockMaintenanceAccess(password)
+      setMaintenance({ checking: false, busy: false, unlocked: true, error: '', retry: false })
+    } catch (error) {
+      setMaintenance((current) => ({
+        ...current,
+        busy: false,
+        error: error.message || 'No se pudo comprobar la contraseña',
+      }))
+    }
+  }
+
+  async function handleVerify(email, code) {
+    const nextSession = await verifyLoginCode(email, code)
+    setSession(nextSession)
+    await refresh(nextSession)
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    setSession(null)
+    setSnapshot(await loadPublicSnapshot())
+  }
+
+  async function handleSavePrediction(participantId, prediction, submit) {
+    await savePrediction(participantId, prediction, submit)
+    await refresh(session)
+  }
+
+  if (maintenance.checking) return <LoadingScreen />
+  if (!maintenance.unlocked) {
+    return (
+      <MaintenanceGate
+        busy={maintenance.busy}
+        error={maintenance.error}
+        onSubmit={handleMaintenanceUnlock}
+        onRetry={maintenance.retry ? checkAccess : null}
+      />
+    )
+  }
+  if (!snapshot) return <LoadingScreen />
+
+  const viewer = snapshot.viewer
+  const isAdmin = viewer?.role === 'admin'
+  const publicParticipant = snapshot.participants.find((item) => item.id === publicParticipantId)
 
   return (
-    <main className="app-shell" aria-label="Porra Ezpeleta">
-      <div className="ambient-image" aria-hidden="true" />
-      <div className="ambient-tint" aria-hidden="true" />
+    <>
+      {loadError && <div className="global-alert">{loadError}</div>}
+      {viewer ? (
+        isAdmin ? (
+          <AdminDashboard
+            snapshot={snapshot}
+            onRefresh={() => refresh(session)}
+            onSavePrediction={handleSavePrediction}
+            onSignOut={handleSignOut}
+          />
+        ) : (
+          <UserDashboard snapshot={snapshot} onSave={handleSavePrediction} onSignOut={handleSignOut} />
+        )
+      ) : (
+        <Landing
+          snapshot={snapshot}
+          onLogin={() => setLoginOpen(true)}
+          onViewPrediction={setPublicParticipantId}
+        />
+      )}
 
-      <section className="brand-area" aria-labelledby="page-title">
-        <p className="eyebrow">Clasificacion familiar</p>
-        <h1 id="page-title">Porra Ezpeleta</h1>
-        <p className="lead">
-        </p>
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        participants={snapshot.participants}
+        configured={snapshot.configured}
+        onRequestCode={requestLoginCode}
+        onVerifyCode={handleVerify}
+      />
 
-        <div className="leader-summary" aria-live="polite">
-          <span>Lider</span>
-          <strong>{leader?.name || 'Pendiente'}</strong>
-          <small>{leader ? `${leader.points} puntos` : 'sin datos'}</small>
-        </div>
-      </section>
-
-      <section className="ranking-area" aria-labelledby="ranking-title">
-        <header className="ranking-header">
-          <div>
-            <p>Top 5</p>
-            <h2 id="ranking-title">Clasificacion</h2>
-          </div>
-          <span>{leaderboard.sourceLabel}</span>
-        </header>
-
-        <ol className="ranking-list" aria-busy={leaderboard.status === 'loading'}>
-          {hasPlayers ? (
-            leaderboard.players.map((player) => (
-              <li className="ranking-row" key={`${player.position}-${player.name}`}>
-                <span className="rank-number">{String(player.position).padStart(2, '0')}</span>
-
-                <div className="player-block">
-                  <strong>{player.name}</strong>
-                  {typeof player.hits === 'number' && <span>{player.hits} aciertos</span>}
-                </div>
-
-                <div className="score-block">
-                  <strong>{player.points}</strong>
-                  <span>puntos</span>
-                </div>
-              </li>
-            ))
-          ) : (
-            <li className="empty-state">
-              <strong>Sin resultados todavia</strong>
-              <span>Cuando mi padre me pase el excel, lo activo.</span>
-            </li>
-          )}
-        </ol>
-
-        <footer className="ranking-footer">
-          <span>{updatedText}</span>
-          {leaderboard.error && <span>Fuente pendiente</span>}
-        </footer>
-      </section>
-    </main>
+      <Modal
+        open={Boolean(publicParticipantId)}
+        onClose={() => setPublicParticipantId('')}
+        title={`Porra de ${publicParticipant?.display_name || ''}`}
+        eyebrow={snapshot.competition.name}
+        wide
+      >
+        <PredictionView snapshot={snapshot} participantId={publicParticipantId} />
+      </Modal>
+    </>
   )
 }
 

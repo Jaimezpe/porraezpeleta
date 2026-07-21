@@ -1,69 +1,67 @@
 # Porra Ezpeleta
 
-Landing React para ver el Top 5 de la porra familiar en una sola pantalla, sin scroll en movil ni escritorio.
+Aplicacion React para gestionar porras familiares de Mundiales y Eurocopas. Incluye acceso por codigo de correo, una porra por participante, cuadro eliminatorio encadenado, Bota de Oro, clasificacion automatica y panel de administracion.
 
-## Arranque
+## Desarrollo local
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Datos reales
+Sin las claves de Supabase la portada funciona en modo preparacion, mostrando a Jaime como campeon vigente. No se crean usuarios ni porras de muestra.
 
-La web no trae datos de ejemplo. Si no hay fuente conectada, muestra un estado pendiente.
+## Preparar Supabase
 
-Para cambiar la fuente, crea `.env.local` copiando `.env.example`.
-
-### Excel
-
-1. Abre el Excel y entra en la hoja concreta donde salen los resultados.
-2. Exporta o guarda esa hoja como CSV.
-3. Coloca el archivo en `public/porra.csv`.
-4. Usa:
+1. Crea un proyecto gratuito en Supabase.
+2. Abre el editor SQL y ejecuta `supabase/migrations/202607210001_initial_schema.sql`.
+3. Copia `.env.example` como `.env.local` y rellena la URL y la clave publica `anon` del proyecto.
+4. Instala Supabase CLI, vincula el proyecto y publica la funcion:
 
 ```bash
-VITE_DATA_SOURCE=excel
-VITE_EXCEL_CSV_PATH=/porra.csv
+supabase login
+supabase link --project-ref TU_PROJECT_REF
+supabase functions deploy request-login --no-verify-jwt
 ```
 
-Tambien puedes usar `VITE_DATA_SOURCE=csv`.
+La migracion crea la competicion inicial, pone la portada en modo ganador con Jaime y crea el organizador `Jaime` con el correo `porra@jaimezpe.com`.
 
-Si tu Excel tiene varias hojas, no pasa nada: exporta solo la hoja de resultados. Cuando tengas el archivo final, pasamelo y ajusto el lector a los nombres reales de la hoja y columnas.
+## Configurar Brevo
 
-No he incluido lectura directa de `.xlsx` en el navegador porque el parser habitual para Vite trae vulnerabilidades altas sin fix disponible. La ruta CSV deja la integracion preparada sin meter ese riesgo en la web.
+El correo se envía mediante Supabase Auth usando el SMTP de Brevo.
 
-### Google Sheets como CSV
+1. Verifica `jaimezpe.com` y el remitente `porra@jaimezpe.com` en Brevo.
+2. En Supabase entra en `Authentication > SMTP Settings` y activa SMTP personalizado.
+3. Usa el servidor, puerto, usuario y contraseña SMTP que facilita Brevo.
+4. En la plantilla de correo de acceso de Supabase incluye el código `{{ .Token }}`.
 
-Puedes publicar la hoja como CSV o usar el ID de la hoja:
+El navegador nunca recibe la clave privada de Supabase ni las credenciales de Brevo. La función de acceso limita cada participante a tres solicitudes de código en cinco minutos.
 
-```bash
-VITE_DATA_SOURCE=google_sheets_csv
-VITE_GOOGLE_SHEET_CSV_URL=
-VITE_GOOGLE_SHEET_ID=
-VITE_GOOGLE_SHEET_GID=0
-```
+## Funcionamiento del cuadro
 
-En Google Sheets, cada pestana tiene un `gid` distinto. Para varias hojas, usa el `gid` de la pestana donde este la clasificacion.
+Desde administración se crean los grupos y los partidos. Cada lado de un partido puede depender de:
 
-### Google Sheets API
+- Primero o segundo de un grupo.
+- Uno de los terceros clasificados.
+- Ganador de un partido anterior.
+- Perdedor de una semifinal, para el tercer puesto.
+- Una selección fija.
 
-Para una hoja accesible con API key:
+Las opciones posteriores de cada participante se recalculan cuando cambia una elección anterior.
 
-```bash
-VITE_DATA_SOURCE=google_sheets_api
-VITE_GOOGLE_SHEETS_API_KEY=tu_api_key
-VITE_GOOGLE_SHEET_ID=tu_sheet_id
-VITE_GOOGLE_SHEET_RANGE=NombreDeLaHoja!A:D
-```
+## Puntuacion inicial
 
-## Columnas esperadas
+- Grupos: 2 puntos por posición exacta y 1 si clasifica en otra posición.
+- Dieciseisavos: 4 puntos por partido.
+- Octavos: 7 puntos por partido.
+- Cuartos: 10 puntos por partido.
+- Semifinales: 12 puntos por partido.
+- Tercer puesto: 12 puntos.
+- Campeón: 20 puntos.
+- Bota de Oro: 20 puntos.
 
-La web reconoce estos nombres de columnas, con o sin mayusculas:
+Todas las cantidades se pueden cambiar desde administración.
 
-- `Puesto`, `Posicion`, `Position`, `Rank`
-- `Nombre`, `Participante`, `Jugador`, `Equipo`
-- `Puntos`, `Pts`, `Points`, `Total`
-- `Aciertos`, `Correctos`, `Hits`
+## Web anterior
 
-Solo se muestran los cinco primeros.
+La versión anterior de la web está compilada en `public/webantigua` y se publica en la ruta `/webantigua/`.
