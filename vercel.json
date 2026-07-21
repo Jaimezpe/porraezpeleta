@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/webantigua",
+      "destination": "/webantigua/",
+      "permanent": false
+    }
+  ]
+}
