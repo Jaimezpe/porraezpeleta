@@ -1,4 +1,4 @@
-import { LogOut, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ClipboardList, LogOut, ShieldCheck } from 'lucide-react'
 import { PredictionEditor } from './PredictionEditor'
 import { ResultsPanel } from './AdminDashboard'
 import { PredictionImage } from './PredictionImage'
@@ -29,11 +29,12 @@ export function UserDashboard({ snapshot, onSave, onSignOut, onRefresh }) {
           <div><p className="section-kicker">Panel personal</p><h1>Hola, {snapshot.viewer.display_name}.</h1></div>
           <span className="status-chip"><ShieldCheck size={15} /> Una porra activa</span>
         </div>
-        {snapshot.viewer.role==='scorer' && <button className="secondary-button" onClick={()=>setResults(!results)}>{results?'Volver a mi apuesta':'Anotar resultados'}</button>}
-        {results ? <>{notice && <p role="status">{notice}</p>}<ResultsPanel snapshot={snapshot} run={run}/></> : <>
-          <PredictionImage snapshot={snapshot} participantId={snapshot.viewer.id}/>
-          <PredictionEditor snapshot={snapshot} participantId={snapshot.viewer.id} onSave={onSave}/>
-        </>}
+        <div className="personal-actions">
+          {snapshot.viewer.role==='scorer' && <button type="button" className="secondary-button" onClick={()=>setResults(!results)}>{results?<ArrowLeft size={17}/>:<ClipboardList size={17}/>} {results?'Volver a mi apuesta':'Anotar resultados'}</button>}
+          {!results && <PredictionImage snapshot={snapshot} participantId={snapshot.viewer.id}/>}
+        </div>
+        {results ? <>{notice && <p role="status">{notice}</p>}<ResultsPanel snapshot={snapshot} run={run}/></> :
+          <PredictionEditor snapshot={snapshot} participantId={snapshot.viewer.id} onSave={onSave}/>}
       </section>
     </main>
   )

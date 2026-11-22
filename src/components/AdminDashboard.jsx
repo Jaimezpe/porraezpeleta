@@ -344,7 +344,11 @@ function ParticipantRow({ participant, run }) {
       <input aria-label="Correo" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
       <select aria-label="Tipo" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="player">Participante</option><option value="scorer">Jugador anotador</option><option value="admin">Organizador</option></select>
       <label className="toggle-label"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>Activo</span></label>
-      <button className="icon-button icon-button--light" type="button" title="Guardar" onClick={() => run(() => saveRecord('participants', { id: form.id, display_name: form.display_name.trim(), email: form.email.trim().toLowerCase(), role: form.role, active: form.active }), 'Participante actualizado')}><Save size={17} /></button>
+      <button className="icon-button icon-button--light" type="button" title="Guardar" onClick={() => {
+        const save = () => run(() => saveRecord('participants', { id: form.id, display_name: form.display_name.trim(), email: form.email.trim().toLowerCase(), role: form.role, active: form.active }), 'Participante actualizado')
+        if (participant.active && !form.active) ask(`al participante ${participant.display_name}`, save, 'Desactivar')
+        else save()
+      }}><Save size={17} /></button>
       <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => ask(`al participante ${participant.display_name}`, () => run(() => deleteRecord('participants', participant.id), 'Participante eliminado'))}><Trash2 size={17} /></button>
     </article>
   )
