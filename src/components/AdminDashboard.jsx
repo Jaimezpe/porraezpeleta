@@ -29,6 +29,7 @@ import {
   uploadImage,
 } from '../lib/repository'
 import { calculateLeaderboard, getPredictionForParticipant, resolveMatchTeams } from '../lib/tournament'
+import { useRemovalGuard } from './RemovalGuard'
 import { PredictionImage } from './PredictionImage'
 import { createEdition, publishEdition } from '../lib/repository'
 import { PredictionEditor } from './PredictionEditor'
@@ -81,7 +82,7 @@ export function AdminDashboard({ snapshot, onRefresh, onSavePrediction, onSignOu
           {ADMIN_TABS.map((item) => {
             const Icon = item.icon
             return (
-              <button className={tab === item.id ? 'active' : ''} type="button" onClick={() => setTab(item.id)} key={item.id}>
+              <button className={tab === item.id ? 'active' : ''} aria-current={tab === item.id ? 'page' : undefined} type="button" onClick={() => setTab(item.id)} key={item.id}>
                 <Icon size={18} /><span>{item.label}</span>
               </button>
             )
@@ -113,6 +114,7 @@ export function AdminDashboard({ snapshot, onRefresh, onSavePrediction, onSignOu
 }
 
 function EditionsPanel({snapshot,run,onSelect}) {
+  const ask = useRemovalGuard()
   const [name,setName]=useState('')
   const [title,setTitle]=useState(snapshot.competition.name)
   const active=snapshot.editions.find(e=>e.is_active)
@@ -124,7 +126,7 @@ function EditionsPanel({snapshot,run,onSelect}) {
     </form>
     <form className="actual-award-form" onSubmit={e=>{e.preventDefault();run(()=>saveRecord('competitions',{id:snapshot.competition.id,name:title.trim()}),'Nombre actualizado')}}>
       <label>Nombre de esta edición<input required value={title} onChange={e=>setTitle(e.target.value)}/></label><button className="secondary-button"><Save size={16}/> Guardar</button>
-      {!snapshot.competition.is_active && <button className="secondary-button" type="button" onClick={()=>{if(window.confirm('¿Eliminar '+snapshot.competition.name+' con todas sus apuestas y resultados?'))run(async()=>{await deleteRecord('competitions',snapshot.competition.id);await onSelect(active.id)},'Edición eliminada')}}><Trash2 size={16}/> Eliminar edición</button>}
+      {!snapshot.competition.is_active && <button className="secondary-button" type="button" onClick={()=>{ask(`la edición ${snapshot.competition.name} con todas sus apuestas y resultados`, () => run(async()=>{await deleteRecord('competitions',snapshot.competition.id);await onSelect(active.id)},'Edición eliminada'))}}><Trash2 size={16}/> Eliminar edición</button>}
     </form>
     {!snapshot.competition.is_active && <button className="secondary-button" onClick={()=>run(()=>publishEdition(snapshot.competition.id),'Portada actualizada')}>Mostrar esta edición en portada</button>}
     <h3>Clasificación · {snapshot.competition.name}</h3>
@@ -333,6 +335,7 @@ function ParticipantsPanel({ snapshot, run }) {
 }
 
 function ParticipantRow({ participant, run }) {
+  const ask = useRemovalGuard()
   const [form, setForm] = useState(participant)
   return (
     <article className="data-row participant-row">
@@ -342,7 +345,7 @@ function ParticipantRow({ participant, run }) {
       <select aria-label="Tipo" value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="player">Participante</option><option value="scorer">Jugador anotador</option><option value="admin">Organizador</option></select>
       <label className="toggle-label"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>Activo</span></label>
       <button className="icon-button icon-button--light" type="button" title="Guardar" onClick={() => run(() => saveRecord('participants', { id: form.id, display_name: form.display_name.trim(), email: form.email.trim().toLowerCase(), role: form.role, active: form.active }), 'Participante actualizado')}><Save size={17} /></button>
-      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => run(() => deleteRecord('participants', participant.id), 'Participante eliminado')}><Trash2 size={17} /></button>
+      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => ask(`al participante ${participant.display_name}`, () => run(() => deleteRecord('participants', participant.id), 'Participante eliminado'))}><Trash2 size={17} /></button>
     </article>
   )
 }
@@ -381,6 +384,7 @@ function TeamsPanel({ snapshot, run }) {
 }
 
 function TeamAdminCard({ team, run }) {
+  const ask = useRemovalGuard()
   const [form, setForm] = useState(team)
   const [file, setFile] = useState(null)
   return (
@@ -400,7 +404,7 @@ function TeamAdminCard({ team, run }) {
         const flagUrl = file ? await uploadImage('porra-assets', file, 'flags') : form.flag_url
         await saveRecord('teams', { id: form.id, name: form.name.trim(), country_code: form.country_code || null, flag_url: flagUrl || null })
       }, 'Seleccion actualizada')}><Save size={17} /></button>
-      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => run(() => deleteRecord('teams', team.id), 'Seleccion eliminada')}><Trash2 size={17} /></button>
+      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => ask(`la selección ${team.name}`, () => run(() => deleteRecord('teams', team.id), 'Seleccion eliminada'))}><Trash2 size={17} /></button>
     </article>
   )
 }
@@ -423,12 +427,13 @@ function GroupsPanel({ snapshot, run }) {
 }
 
 function GroupAdminCard({ group, snapshot, run }) {
+  const ask = useRemovalGuard()
   const [selected, setSelected] = useState(group.teams.map((team) => team.id))
   const [name, setName] = useState(group.name)
   const [sortOrder, setSortOrder] = useState(group.sort_order)
   return (
     <article className="group-admin-card">
-      <header><div className="group-title-fields"><input aria-label="Nombre del grupo" value={name} onChange={(event) => setName(event.target.value)} /><input aria-label="Orden del grupo" type="number" min="1" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></div><button className="icon-button icon-button--danger" type="button" title="Eliminar grupo" onClick={() => run(() => deleteRecord('groups', group.id), 'Grupo eliminado')}><Trash2 size={16} /></button></header>
+      <header><div className="group-title-fields"><input aria-label="Nombre del grupo" value={name} onChange={(event) => setName(event.target.value)} /><input aria-label="Orden del grupo" type="number" min="1" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} /></div><button className="icon-button icon-button--danger" type="button" title="Eliminar grupo" onClick={() => ask(`el grupo ${group.name}`, () => run(() => deleteRecord('groups', group.id), 'Grupo eliminado'))}><Trash2 size={16} /></button></header>
       <div className="team-check-list">
         {snapshot.teams.map((team) => {
           const checked = selected.includes(team.id)
@@ -436,10 +441,10 @@ function GroupAdminCard({ group, snapshot, run }) {
           return <label className={assignedElsewhere && !checked ? 'disabled' : ''} key={team.id}><input type="checkbox" checked={checked} disabled={assignedElsewhere && !checked} onChange={(event) => setSelected((current) => event.target.checked ? [...current, team.id] : current.filter((id) => id !== team.id))} /><TeamFlag team={team} size="small" /><span>{team.name}</span></label>
         })}
       </div>
-      <button className="secondary-button secondary-button--full" type="button" onClick={() => run(async () => {
+      <button className="secondary-button secondary-button--full" type="button" onClick={() => { const save = () => run(async () => {
         await saveRecord('groups', { id: group.id, name: name.trim(), sort_order: Number(sortOrder) })
         await replaceGroupTeams(snapshot.competition.id, group.id, selected)
-      }, 'Grupo actualizado')}><Save size={16} /> Guardar grupo</button>
+      }, 'Grupo actualizado'); const removed = group.teams.filter(team => !selected.includes(team.id)); if (removed.length) ask(`del grupo ${group.name}: ${removed.map(team => team.name).join(', ')}`, save); else save() }}><Save size={16} /> Guardar grupo</button>
     </article>
   )
 }
@@ -460,6 +465,7 @@ function BracketPanel({ snapshot, run }) {
 }
 
 function MatchAdminRow({ match, snapshot, run }) {
+  const ask = useRemovalGuard()
   const [form, setForm] = useState({ ...match, label: match.label || '' })
   const options = useMemo(() => buildSourceOptions(snapshot), [snapshot])
   return (
@@ -470,7 +476,7 @@ function MatchAdminRow({ match, snapshot, run }) {
       <label><span>Equipo inferior</span><select value={JSON.stringify(form.away_source || {})} onChange={(event) => setForm({ ...form, away_source: JSON.parse(event.target.value) })}>{options.map((option) => <option value={JSON.stringify(option.value)} key={`a-${option.label}`}>{option.label}</option>)}</select></label>
       <input aria-label="Fecha del partido" type="datetime-local" value={toDateTimeInput(form.match_date)} onChange={(event) => setForm({ ...form, match_date: event.target.value ? new Date(event.target.value).toISOString() : null })} />
       <button className="icon-button icon-button--light" type="button" title="Guardar" onClick={() => run(() => saveRecord('knockout_matches', { id: form.id, label: form.label, home_source: form.home_source, away_source: form.away_source, match_date: form.match_date }), 'Partido actualizado')}><Save size={17} /></button>
-      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => run(() => deleteRecord('knockout_matches', match.id), 'Partido eliminado')}><Trash2 size={17} /></button>
+      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => ask(`el partido ${match.label || match.slot_index}`, () => run(() => deleteRecord('knockout_matches', match.id), 'Partido eliminado'))}><Trash2 size={17} /></button>
     </article>
   )
 }
@@ -518,6 +524,7 @@ function AwardPanel({ snapshot, run }) {
 }
 
 function CandidateAdminRow({ candidate, snapshot, run }) {
+  const ask = useRemovalGuard()
   const [form, setForm] = useState(candidate)
   const [file, setFile] = useState(null)
   return (
@@ -532,7 +539,7 @@ function CandidateAdminRow({ candidate, snapshot, run }) {
         const photoUrl = file ? await uploadImage('porra-assets', file, 'players') : form.photo_url
         await saveRecord('award_candidates', { id: form.id, name: form.name.trim(), team_id: form.team_id || null, photo_url: photoUrl || null, sort_order: form.sort_order })
       }, 'Candidato actualizado')}><Save size={17} /></button>
-      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => run(() => deleteRecord('award_candidates', candidate.id), 'Candidato eliminado')}><Trash2 size={17} /></button>
+      <button className="icon-button icon-button--danger" type="button" title="Eliminar" onClick={() => ask(`al candidato ${candidate.name}`, () => run(() => deleteRecord('award_candidates', candidate.id), 'Candidato eliminado'))}><Trash2 size={17} /></button>
     </article>
   )
 }
@@ -551,11 +558,12 @@ export function ResultsPanel({ snapshot, run }) {
 }
 
 function ActualGroups({ snapshot, run }) {
+  const ask = useRemovalGuard()
   return <div className="groups-grid">{snapshot.groups.map((group) => <article className="group-card group-card--editable" key={group.id}><header><strong>{group.name}</strong></header>{[1, 2, 3].map((position) => {
     const result = snapshot.actualGroupResults.find((item) => item.group_id === group.id && item.position === position)
     return <label className="group-select-row" key={position}><span>{position}º</span><select value={result?.team_id || ''} onChange={(event) => {
       const teamId = event.target.value
-      if (!teamId && result) run(() => deleteRecord('actual_group_results', result.id), 'Resultado eliminado')
+      if (!teamId && result) ask(`el resultado de ${group.name}, posición ${position}`, () => run(() => deleteRecord('actual_group_results', result.id), 'Resultado eliminado'))
       else if (teamId) run(() => upsertRecord('actual_group_results', { id: result?.id, competition_id: snapshot.competition.id, group_id: group.id, position, team_id: teamId }, 'competition_id,group_id,position'), 'Resultado actualizado')
     }}><option value="">Pendiente</option>{group.teams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}</select></label>
   })}</article>)}</div>
@@ -575,12 +583,13 @@ function LiveScore({match,result,snapshot,run}) {
 }
 
 function ActualMatches({ snapshot, run }) {
+  const ask = useRemovalGuard()
   return <div className="actual-match-list">{snapshot.matches.map((match) => {
     const result = snapshot.actualMatchResults.find((item) => item.match_id === match.id)
     const stage = STAGES.find((item) => item.value === match.stage)
     return <article key={match.id}><label><span><small>{stage?.label}</small><strong>{match.label || `Partido ${match.slot_index}`}</strong></span><select value={result?.winner_team_id || ''} onChange={(event) => {
       const teamId = event.target.value
-      if (!teamId && result) run(() => deleteRecord('actual_match_results', result.id), 'Resultado eliminado')
+      if (!teamId && result) ask(`el resultado de ${match.label || match.slot_index}`, () => run(() => deleteRecord('actual_match_results', result.id), 'Resultado eliminado'))
       else if (teamId) run(() => upsertRecord('actual_match_results', { id: result?.id, competition_id: snapshot.competition.id, match_id: match.id, winner_team_id: teamId }, 'competition_id,match_id'), 'Resultado actualizado')
     }}><option value="">Ganador pendiente</option>{snapshot.teams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}</select></label><LiveScore {...{match,result,snapshot,run}}/></article>
   })}</div>
@@ -593,6 +602,7 @@ function ActualAward({ snapshot, run }) {
 }
 
 function PredictionsPanel({ snapshot, run, onSavePrediction }) {
+  const ask = useRemovalGuard()
   const [participantId, setParticipantId] = useState('')
   const prediction = participantId ? getPredictionForParticipant(snapshot, participantId) : null
   return (
@@ -601,7 +611,7 @@ function PredictionsPanel({ snapshot, run, onSavePrediction }) {
       <div className="prediction-admin-list">
         {snapshot.participants.filter((item) => item.active).map((participant) => {
           const current = getPredictionForParticipant(snapshot, participant.id)
-          return <article className={participantId === participant.id ? 'selected' : ''} key={participant.id}><span className="person-avatar">{participant.display_name.slice(0, 1)}</span><div><strong>{participant.display_name}</strong><span>{current ? current.entry.status === 'submitted' ? 'Enviada' : 'Borrador' : 'Sin empezar'}</span></div><button className="secondary-button" type="button" onClick={() => setParticipantId(participant.id)}>Abrir</button>{current && <button className="icon-button icon-button--danger" type="button" title="Eliminar porra" onClick={() => { if (window.confirm(`¿Eliminar la apuesta de ${participant.display_name} en ${snapshot.competition.name}? Se perderán sus pronósticos.`)) run(() => deletePrediction(participant.id), 'Porra eliminada') }}><Trash2 size={17} /></button>}</article>
+          return <article className={participantId === participant.id ? 'selected' : ''} key={participant.id}><span className="person-avatar">{participant.display_name.slice(0, 1)}</span><div><strong>{participant.display_name}</strong><span>{current ? current.entry.status === 'submitted' ? 'Enviada' : 'Borrador' : 'Sin empezar'}</span></div><button className="secondary-button" type="button" onClick={() => setParticipantId(participant.id)}>Abrir</button>{current && <button className="icon-button icon-button--danger" type="button" title="Eliminar porra" onClick={() => { ask(`la porra de ${participant.display_name} en ${snapshot.competition.name}`, () => run(() => deletePrediction(participant.id), 'Porra eliminada')) }}><Trash2 size={17} /></button>}</article>
         })}
       </div>
       {participantId && <div className="admin-prediction-editor"><PredictionImage snapshot={snapshot} participantId={participantId}/><PredictionEditor key={participantId} snapshot={snapshot} participantId={participantId} onSave={onSavePrediction} adminMode /></div>}

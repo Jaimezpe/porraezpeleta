@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
+import { RemovalGuard } from './components/RemovalGuard'
 
 const pathname = window.location.pathname.replace(/\/+$/, '')
 
@@ -9,7 +10,7 @@ if (pathname === '/webantigua') {
 } else {
   createRoot(document.getElementById('root')).render(
     <StrictMode>
-      <App />
+      <RemovalGuard><App /></RemovalGuard>
     </StrictMode>,
   )
 }
