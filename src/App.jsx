@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AdminDashboard } from './components/AdminDashboard'
 import { Landing } from './components/Landing'
 import { LoginModal } from './components/LoginModal'
@@ -35,16 +35,22 @@ function App() {
     retry: false,
   })
 
+  const edition = useRef(null)
+  const request = useRef(0)
   const refresh = useCallback(async (activeSession = null) => {
+    const version = ++request.current
+    if (!activeSession) edition.current = null
     setLoadError('')
     try {
       const next = activeSession?.user?.id
-        ? await loadAuthenticatedSnapshot(activeSession.user.id)
+        ? await loadAuthenticatedSnapshot(activeSession.user.id, edition.current)
         : await loadPublicSnapshot()
+      if(version !== request.current) return null
       setSnapshot(next)
       return next
     } catch (error) {
-      setLoadError('No se pudo conectar con Supabase. Revisa la configuracion del proyecto.')
+      if(version !== request.current) return null
+      setLoadError(error.message || 'No se pudo cargar la edición.')
       setSnapshot((current) => current || { ...EMPTY_SNAPSHOT, configured: false })
       return null
     }
@@ -132,6 +138,14 @@ function App() {
   }
   if (!snapshot) return <LoadingScreen />
 
+  async function selectEdition(id) {
+    const previous = edition.current
+    edition.current = id
+    if (!await refresh(session)) edition.current = previous
+  }
+  const selector = <select className="edition-select" aria-label="Seleccionar porra" value={snapshot.competition.id || ''} onChange={e=>selectEdition(e.target.value)}>
+    {snapshot.editions?.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+  </select>
   const viewer = snapshot.viewer
   const isAdmin = viewer?.role === 'admin'
   const publicParticipant = snapshot.participants.find((item) => item.id === publicParticipantId)
@@ -141,14 +155,14 @@ function App() {
       {loadError && <div className="global-alert">{loadError}</div>}
       {viewer ? (
         isAdmin ? (
-          <AdminDashboard
+          <AdminDashboard key={snapshot.competition.id} selector={selector} onSelectEdition={selectEdition}
             snapshot={snapshot}
             onRefresh={() => refresh(session)}
             onSavePrediction={handleSavePrediction}
             onSignOut={handleSignOut}
           />
         ) : (
-          <UserDashboard snapshot={snapshot} onSave={handleSavePrediction} onSignOut={handleSignOut} />
+          <UserDashboard key={snapshot.competition.id} selector={selector} snapshot={snapshot} onRefresh={()=>refresh(session)} onSave={handleSavePrediction} onSignOut={handleSignOut} />
         )
       ) : (
         <Landing

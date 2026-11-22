@@ -21,14 +21,13 @@ export const EMPTY_SNAPSHOT = normalizeSnapshot({
   awardResult: null,
 })
 
-export async function loadPublicSnapshot() {
+export async function loadPublicSnapshot(editionId) {
   if (!isSupabaseConfigured) return { ...EMPTY_SNAPSHOT, configured: false }
 
-  const { data: competition, error } = await supabase
+  const competitionQuery = supabase
     .from('competitions')
     .select('*')
-    .eq('is_active', true)
-    .maybeSingle()
+  const { data: competition, error } = await (editionId ? competitionQuery.eq('id', editionId) : competitionQuery.eq('is_active', true)).maybeSingle()
 
   if (error) throw error
   if (!competition) return { ...EMPTY_SNAPSHOT, configured: true }
@@ -156,8 +155,21 @@ export async function signOut() {
   if (supabase) await supabase.auth.signOut()
 }
 
-export async function loadAuthenticatedSnapshot(userId) {
-  const base = await loadPublicSnapshot()
+export async function publishEdition(id) {
+  const {error} = await supabase.rpc('publish_edition',{edition:id})
+  if(error) throw error
+}
+
+export async function createEdition(name, sourceId) {
+  const {data,error} = await supabase.rpc('create_edition',{edition_name:name, source_id:sourceId})
+  if(error) throw error
+  return data
+}
+
+export async function loadAuthenticatedSnapshot(userId, editionId) {
+  const editions = await read('competitions', q => q.order('created_at'))
+  const base = await loadPublicSnapshot(editionId)
+  base.editions = editions
   if (!userId || !base.competition?.id) return { ...base, viewer: null }
 
   const { data: viewer, error } = await supabase
@@ -168,11 +180,13 @@ export async function loadAuthenticatedSnapshot(userId) {
     .eq('active', true)
     .maybeSingle()
   if (error) throw error
-  if (!viewer) return { ...base, viewer: null }
-
-  if (viewer.role === 'admin') {
-    return loadAdminSnapshot(base.competition.id, viewer)
+  const {data: admin,error: roleError} = await supabase.rpc('is_admin')
+  if(roleError) throw roleError
+  if(admin) {
+    const profile = viewer || (await read('participants',q=>q.eq('user_id',userId).eq('role','admin').limit(1)))[0]
+    return {...await loadAdminSnapshot(base.competition.id,{...profile,role:'admin'}),editions}
   }
+  if (!viewer) return { ...base, viewer: null }
 
   const { data: ownEntry, error: ownError } = await supabase
     .from('prediction_entries')

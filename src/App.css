@@ -178,6 +178,9 @@ input[type="file"] { padding: 8px; font-size: .75rem; }
 
 .dashboard-shell { width: 100%; height: 100dvh; overflow: hidden; color: var(--ink); background: #eef1ed; }
 .dashboard-topbar { display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 24px; border-bottom: 1px solid var(--line); background: #fff; }
+.dashboard-topbar .edition-select { width: auto; max-width: 38%; min-width: 0; margin: 0 auto 0 12px; text-overflow: ellipsis; }
+.actual-match-list .actual-award-form label { display: grid; grid-template-columns: 1fr; min-width: 0; padding: 0; border: 0; }
+
 .brand-lockup--dark { color: var(--ink); }.brand-lockup--dark small { color: var(--muted); }.brand-lockup--dark .brand-monogram { border-color: #d5bd82; }
 .dashboard-user { display: flex; align-items: center; gap: 12px; }.dashboard-user > span { display: grid; justify-items: end; }.dashboard-user small { color: var(--muted); font-size: .62rem; font-weight: 800; text-transform: uppercase; }.dashboard-user strong { font-size: .83rem; }
 .dashboard-content { height: calc(100dvh - 68px); overflow: auto; padding: 28px clamp(20px,4vw,58px) 40px; }

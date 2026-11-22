@@ -135,6 +135,7 @@ async function requireAdmin(request: Request, service: ReturnType<typeof createC
     .eq('user_id', user.id)
     .eq('role', 'admin')
     .eq('active', true)
+    .limit(1)
     .maybeSingle()
   if (!admin) throw new Error('Sin permiso')
   return user.id
