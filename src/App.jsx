@@ -162,7 +162,7 @@ function App() {
             onSignOut={handleSignOut}
           />
         ) : (
-          <UserDashboard key={snapshot.competition.id} selector={selector} snapshot={snapshot} onRefresh={()=>refresh(session)} onSave={handleSavePrediction} onSignOut={handleSignOut} />
+          <UserDashboard key={snapshot.competition.id} snapshot={snapshot} onRefresh={()=>refresh(session)} onSave={handleSavePrediction} onSignOut={handleSignOut} />
         )
       ) : (
         <Landing

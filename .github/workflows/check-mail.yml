@@ -1,0 +1,32 @@
+name: Comprobar correo de la porra
+on:
+  schedule:
+    - cron: '37 8 1 * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  smtp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Enviar test por el mismo SMTP que Supabase
+        env:
+          SMTP_PASSWORD: ${{ secrets.PORRA_SMTP_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+
+          password = os.environ["SMTP_PASSWORD"]
+          if not password:
+              raise SystemExit("Falta el secreto PORRA_SMTP_PASSWORD.")
+          message = EmailMessage()
+          message["From"] = "Porra Ezpeleta <porra@jaimezpe.com>"
+          message["To"] = "porra@jaimezpe.com"
+          message["Subject"] = "test"
+          message.set_content("test")
+          with smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=25) as smtp:
+              smtp.starttls(context=ssl.create_default_context())
+              smtp.login("ab59d3001@smtp-brevo.com", password)
+              smtp.send_message(message)
+          PY

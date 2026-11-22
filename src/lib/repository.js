@@ -167,9 +167,9 @@ export async function createEdition(name, sourceId) {
 }
 
 export async function loadAuthenticatedSnapshot(userId, editionId) {
-  const editions = await read('competitions', q => q.order('created_at'))
-  const base = await loadPublicSnapshot(editionId)
-  base.editions = editions
+  const {data: admin,error: roleError} = await supabase.rpc('is_admin')
+  if(roleError) throw roleError
+  const base = await loadPublicSnapshot(admin ? editionId : undefined)
   if (!userId || !base.competition?.id) return { ...base, viewer: null }
 
   const { data: viewer, error } = await supabase
@@ -180,9 +180,8 @@ export async function loadAuthenticatedSnapshot(userId, editionId) {
     .eq('active', true)
     .maybeSingle()
   if (error) throw error
-  const {data: admin,error: roleError} = await supabase.rpc('is_admin')
-  if(roleError) throw roleError
   if(admin) {
+    const editions = await read('competitions', q => q.order('created_at'))
     const profile = viewer || (await read('participants',q=>q.eq('user_id',userId).eq('role','admin').limit(1)))[0]
     return {...await loadAdminSnapshot(base.competition.id,{...profile,role:'admin'}),editions}
   }

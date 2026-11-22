@@ -4,7 +4,7 @@ import { ResultsPanel } from './AdminDashboard'
 import { PredictionImage } from './PredictionImage'
 import { useState } from 'react'
 
-export function UserDashboard({ snapshot, onSave, onSignOut, selector, onRefresh }) {
+export function UserDashboard({ snapshot, onSave, onSignOut, onRefresh }) {
   const [results,setResults]=useState(false)
   const [notice,setNotice]=useState('')
   async function run(action,message) {
@@ -17,7 +17,6 @@ export function UserDashboard({ snapshot, onSave, onSignOut, selector, onRefresh
           <span className="brand-monogram">PE</span>
           <span><strong>Porra Ezpeleta</strong><small>{snapshot.competition.name}</small></span>
         </div>
-        {selector}
         <div className="dashboard-user">
           <span><small>Participante</small><strong>{snapshot.viewer.display_name}</strong></span>
           <button className="icon-button icon-button--light" type="button" onClick={onSignOut} aria-label="Cerrar sesion" title="Cerrar sesión">
